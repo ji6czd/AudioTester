@@ -64,6 +64,24 @@ void setup() {
 #define DELAY 30 // 測定間隔
 #define TH 0.3 // 測定限界
 
+void printBar(int val) {
+  constexpr displayMultiprex=1;
+  static uint8_t lastLen=0;
+  val *=displayMultiprex*2; // 点字ディスプレイ１セルで２目盛りにしたいので*2
+  String bar;
+  for(int i = 0; i < val/2; i++) {
+    bar.concat("=");
+  }
+  if (val%2) {
+    bar.concat("l");
+  }
+  uint8_t curLen = bar.length();
+  for (int i=0; i < lastLen - curLen; i++) {
+    bar.concat(" ");
+  }
+  lastLen = curLen;
+  Serial.printf("%s\r", bar.c_str());
+}
 
 void loop() {
 	unsigned long t = millis();
@@ -74,7 +92,8 @@ void loop() {
 //		float amp = (float)random(1000) / 10.f;
 //		float volt = (float)random(10) / 2.f;
     uint16_t freq = 500+(amp*20.0);
-		Serial.printf("%.2fmA %.2fV\r", amp, volt);
+		// Serial.printf("%.2fmA %.2fV\r", amp, volt);
+    printBar(int(amp));
     if (amp > TH) {
       tone(SPK_PIN, freq, DELAY-5);
     }
