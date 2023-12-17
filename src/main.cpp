@@ -1,8 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <cstdint>
+#include <ios>
+#include <variant>
 
-#define SPK_PIN D10
+#define SPK_PIN D1
 #define INA226_ADDR 0x40
 
 #define INA226REG_SHUNT_V 0x01
@@ -61,13 +63,13 @@ void setup() {
   delay(500);
 }
 
-#define DELAY 30 // 測定間隔
+#define DELAY 5 // 測定間隔
 #define TH 0.3 // 測定限界
 
 void printBar(int val) {
-  constexpr displayMultiprex=1;
+  constexpr uint8_t displayMultiprex=5;
   static uint8_t lastLen=0;
-  val *=displayMultiprex*2; // 点字ディスプレイ１セルで２目盛りにしたいので*2
+  val = val / displayMultiprex; // 点字ディスプレイ１セルで２目盛りにしたいので*2
   String bar;
   for(int i = 0; i < val/2; i++) {
     bar.concat("=");
@@ -84,24 +86,33 @@ void printBar(int val) {
 }
 
 void loop() {
-	unsigned long t = millis();
+  unsigned long t = millis();
 
-	if (isExistINA226) {
-		float amp = (int16_t)INA226_read(INA226REG_SHUNT_V) * 2.5f / SHUNT_R;
-		float volt = INA226_read(INA226REG_BUS_V) * 1.25f / 1000.f;
+  float amp = (int16_t)INA226_read(INA226REG_SHUNT_V) * 2.5f / SHUNT_R;
+  float volt = INA226_read(INA226REG_BUS_V) * 1.25f / 1000.f;
+  static float pamp = 0.0f;
+  static int holdtime = 0;
+  if (amp > pamp) {
+    pamp = amp;
+    holdtime = millis();
+  }
+  if(holdtime && millis() > holdtime+3000) {
+    pamp = 0;
+    holdtime = 0;
+  }
+    
 //		float amp = (float)random(1000) / 10.f;
 //		float volt = (float)random(10) / 2.f;
-    uint16_t freq = 500+(amp*20.0);
-		// Serial.printf("%.2fmA %.2fV\r", amp, volt);
-    printBar(int(amp));
-    if (amp > TH) {
-      tone(SPK_PIN, freq, DELAY-5);
-    }
-	}
-
-	unsigned long elapse = millis() - t;
-	if (elapse < DELAY) {
-		delay(DELAY - elapse);
-	}
+  uint16_t freq = 500+(amp*100.0);
+  Serial.printf("%.2fmA %.2fV\r", pamp, volt);
+  // printBar(int(amp));
+  if (amp > TH) {
+    tone(SPK_PIN, freq, DELAY-1);
+  }
+  unsigned long elapse = millis() - t;
+  if (elapse < DELAY) {
+    // Serial.printf("%05d\r", elapse);
+    delay(DELAY - elapse);
+  }
 }
 
